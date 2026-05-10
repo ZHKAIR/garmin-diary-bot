@@ -126,6 +126,9 @@ def test_compact_intervals_uses_smoothing():
     ]
     msg = build_compact_intervals_message(segments, "test")
     assert "3x400" in msg
+    assert "3x400: 3:41, 3:43, 3:46" in msg
+    assert "0:90" not in msg
+    assert "1:30" not in msg
     assert "test" in msg
 
 
@@ -139,6 +142,31 @@ def test_compact_intervals_diary_format():
     lines = [l for l in msg.split("\n") if "x" in l.lower()]
     assert len(lines) == 1
     assert lines[0].startswith("3x200:")
+    assert lines[0] == "3x200: 3:18, 3:12, 3:20"
+
+
+def test_compact_intervals_formats_200m_as_pace_not_elapsed_time():
+    segments = [
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 200, "duration_s": 33},
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 200, "duration_s": 37},
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 200, "duration_s": 37},
+    ]
+    msg = build_compact_intervals_message(segments)
+    assert "3x200: 2:45, 3:05, 3:05" in msg
+    assert "0:33" not in msg
+    assert "0:37" not in msg
+
+
+def test_compact_intervals_formats_400m_as_pace_not_elapsed_time():
+    segments = [
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 400, "duration_s": 84.4},
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 400, "duration_s": 84.8},
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 400, "duration_s": 86},
+    ]
+    msg = build_compact_intervals_message(segments)
+    assert "3x400: 3:31, 3:32, 3:35" in msg
+    assert "1:24" not in msg
+    assert "1:26" not in msg
 
 
 def test_laps_message_regular_run():
@@ -167,6 +195,7 @@ def test_gps_drift_200m_intervals():
     ]
     msg = build_compact_intervals_message(segments)
     assert "4x200" in msg
+    assert "4x200: 3:03, 2:59, 3:10, 3:22" in msg
 
 
 def test_detailed_intervals_with_sublaps():
