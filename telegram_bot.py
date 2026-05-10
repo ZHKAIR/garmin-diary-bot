@@ -58,19 +58,34 @@ def save_garth_tokens(chat_id: int, api: Garmin) -> None:
 
 
 def try_restore_session(chat_id: int) -> Optional[Garmin]:
-    """Try to restore a Garmin session from persisted garth tokens."""
+    """Try to restore a Garmin session from persisted garth tokens.
+
+    Loads tokens, calls login, and verifies with a lightweight API call.
+    On any failure (expired, network, etc.) clears partial data and returns None.
+    """
     token_dir = _token_path(chat_id)
     if not token_dir.exists():
         return None
     try:
+        logger.info("Attempting restore from garth tokens for chat %s", chat_id)
         api = Garmin()
         api.garth.load(str(token_dir))
-        api.display_name = api.garth.profile["displayName"]
         api.login()
-        logger.info("Restored garth session for chat %s", chat_id)
+        # lightweight verification call
+        api.get_user_profile()
+        if hasattr(api.garth, "profile") and api.garth.profile:
+            api.display_name = api.garth.profile.get("displayName")
+        logger.info("Successfully restored and verified garth session for chat %s", chat_id)
         return api
     except Exception as e:
-        logger.warning("Could not restore garth session for chat %s: %s", chat_id, e)
+        logger.warning("Garh restore failed for chat %s: %s — clearing tokens", chat_id, e)
+        try:
+            import shutil
+            shutil.rmtree(token_dir, ignore_errors=True)
+        except Exception:
+            pass
+        # clear any partial session
+        chat_sessions.pop(chat_id, None)
         return None
 
 
@@ -876,6 +891,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def logout_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Clear persisted Garmin tokens and session for this chat."""
+    chat_id = update.effective_chat.id
+    token_dir = _token_path(chat_id)
+    try:
+        import shutil
+        shutil.rmtree(token_dir, ignore_errors=True)
+    except Exception:
+        pass
+    chat_sessions.pop(chat_id, None)
+    await update.message.reply_text(
+        "Вы вышли из аккаунта Garmin. Нажмите /start чтобы войти заново."
+    )
+
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
         "<b>BegovayaKuznitsa_Bot</b>\n\n"
@@ -883,9 +913,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/start \u2014 \u0433\u043b\u0430\u0432\u043d\u043e\u0435 \u043c\u0435\u043d\u044e\n"
         "/last \u2014 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0431\u0435\u0433\u043e\u0432\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0430 (\u0431\u044b\u0441\u0442\u0440\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430)\n"
         "/format &lt;activity_id&gt; \u2014 \u0444\u043e\u0440\u043c\u0430\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u0443\u044e \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443\n"
+        "/logout \u2014 \u0432\u044b\u0445\u043e\u0434 \u0438\u0437 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430 Garmin (\u0441\u0431\u0440\u043e\u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445)\n"
         "/help \u2014 \u044d\u0442\u0430 \u0441\u043f\u0440\u0430\u0432\u043a\u0430\n\n"
+        "<b>\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u0430\u044f \u0430\u0432\u0442\u043e\u0440\u0438\u0437\u0430\u0446\u0438\u044f:</b>\n"
+        "\u041f\u043e\u0441\u043b\u0435 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u0443\u0441\u043f\u0435\u0448\u043d\u043e\u0433\u043e \u0432\u0445\u043e\u0434\u0430 \u0442\u043e\u043a\u0435\u043d\u044b \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u044e\u0442\u0441\u044f \u0438 \u0432\u044b \u043d\u0435 \u0431\u0443\u0434\u0435\u0442\u0435 \u0432\u0432\u043e\u0434\u0438\u0442\u044c email/\u043f\u0430\u0440\u043e\u043b\u044c \u043f\u043e\u0441\u043b\u0435 \u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u0431\u043e\u0442\u0430.\n\n"
         "<b>\u041a\u0430\u043a \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c\u0441\u044f:</b>\n"
-        "1. /start \u2192 Garmin Extractor \u2192 \u0432\u0432\u043e\u0434 email/\u043f\u0430\u0440\u043e\u043b\u044f\n"
+        "1. /start \u2192 Garmin Extractor \u2014 \u043f\u0435\u0440\u0432\u044b\u0439 \u0440\u0430\u0437 \u0432\u0432\u0435\u0434\u0438\u0442\u0435 email/\u043f\u0430\u0440\u043e\u043b\u044c, \u0434\u0430\u043b\u0435\u0435 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\n"
         "2. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443 \u0438\u0437 \u0441\u043f\u0438\u0441\u043a\u0430\n"
         "3. \u0411\u043e\u0442 \u043f\u043e\u043a\u0430\u0436\u0435\u0442 \u043a\u043e\u043c\u043f\u0430\u043a\u0442\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430\n"
         "4. \u041a\u043d\u043e\u043f\u043a\u0430\u043c\u0438 \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0430\u0439\u0442\u0435 \u0444\u043e\u0440\u043c\u0430\u0442 (\u043f\u043e\u0434\u0440\u043e\u0431\u043d\u044b\u0439 / \u043a\u043e\u043c\u043f\u0430\u043a\u0442\u043d\u044b\u0439)\n\n"
@@ -985,8 +1018,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = query.message.chat_id
     sess = ensure_session(chat_id)
 
+    # First attempt explicit restore (task requirement)
+    api = try_restore_session(chat_id)
+    if api:
+        sess["api"] = api
+        await query.edit_message_text("\u23f3 \u0412\u044b\u043f\u043e\u043b\u043d\u044f\u044e \u0432\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435...")
+        acts = get_last_activities(sess, 10)
+        if not acts:
+            await query.edit_message_text("\u274c \u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043e\u043a. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.")
+            return
+        sess["last_activities"] = acts
+        keyboard = _build_activity_list_keyboard(acts)
+        await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
+        return
+
+    # Fallback to ensure_api (for any edge case) then ask credentials
     api = ensure_api(chat_id)
     if api:
+        sess["api"] = api
         acts = get_last_activities(sess, 10)
         if not acts:
             await query.edit_message_text("\u274c \u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043e\u043a. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.")
@@ -1234,6 +1283,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("last", last_command))
     application.add_handler(CommandHandler("format", format_command))
+    application.add_handler(CommandHandler("logout", logout_command))
     application.add_handler(CallbackQueryHandler(button_handler, pattern=r"^garmin_extractor$"))
     application.add_handler(CallbackQueryHandler(pace_button_handler, pattern=r"^pace_calculator$"))
     application.add_handler(CallbackQueryHandler(compact_format_handler, pattern=r"^compact_\d+$"))
