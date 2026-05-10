@@ -31,9 +31,6 @@ if not BOT_TOKEN:
     logger.critical("TELEGRAM_BOT_TOKEN environment variable not set")
     sys.exit(1)
 
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
-PORT = int(os.environ.get("PORT", "8443"))
-
 TOKEN_DIR = Path(os.environ.get("GARTH_TOKEN_DIR", ".garth_tokens"))
 
 # Session storage per chat
@@ -44,30 +41,6 @@ chat_sessions: Dict[int, Dict[str, Any]] = {}
 
 def _token_path(chat_id: int) -> Path:
     return TOKEN_DIR / str(chat_id)
-
-
-def _save_pending_email(chat_id: int, email: str) -> None:
-    """Save pending login email to disk so the flow survives restarts between messages."""
-    token_dir = _token_path(chat_id)
-    token_dir.mkdir(parents=True, exist_ok=True)
-    (token_dir / "pending_email.txt").write_text(email, encoding="utf-8")
-
-
-def _load_pending_email(chat_id: int) -> Optional[str]:
-    """Load pending login email if it exists (survives restarts)."""
-    token_dir = _token_path(chat_id)
-    pending_file = token_dir / "pending_email.txt"
-    if pending_file.exists():
-        return pending_file.read_text(encoding="utf-8").strip()
-    return None
-
-
-def _clear_pending_email(chat_id: int) -> None:
-    """Remove pending login email file after successful login or cancellation."""
-    token_dir = _token_path(chat_id)
-    pending_file = token_dir / "pending_email.txt"
-    if pending_file.exists():
-        pending_file.unlink()
 
 
 def save_garth_tokens(chat_id: int, api: Garmin) -> None:
@@ -102,13 +75,12 @@ def try_restore_session(chat_id: int) -> Optional[Garmin]:
         logger.info("Successfully restored and verified garth session for chat %s", chat_id)
         return api
     except Exception as e:
-        logger.warning("Garh restore failed for chat %s: %s — clearing tokens", chat_id, e)
+        logger.warning("Garth restore failed for chat %s: %s — clearing tokens", chat_id, e)
         try:
             import shutil
             shutil.rmtree(token_dir, ignore_errors=True)
         except Exception:
             pass
-        # clear any partial session
         chat_sessions.pop(chat_id, None)
         return None
 
@@ -1042,19 +1014,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = query.message.chat_id
     sess = ensure_session(chat_id)
 
-    # First attempt explicit restore (task requirement)
-    api = try_restore_session(chat_id)
-    if api:
-        sess["api"] = api
-        acts = get_last_activities(sess, 10)
-        if acts:
-            sess["last_activities"] = acts
-            keyboard = _build_activity_list_keyboard(acts)
-            await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
-            return
-        # Restore succeeded but no activities → treat as expired, fall through to credentials
-
-    # Fallback to ensure_api (for any edge case) then ask credentials
     api = ensure_api(chat_id)
     if api:
         sess["api"] = api
@@ -1064,8 +1023,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             keyboard = _build_activity_list_keyboard(acts)
             await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
             return
+        await query.edit_message_text(
+            "\u274c \u0421\u0435\u0441\u0441\u0438\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u0430, \u043d\u043e \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.",
+            reply_markup=build_main_menu_keyboard(),
+        )
+        return
 
-    # No valid session → ask for credentials
     sess["state"] = "waiting_email"
     await query.message.reply_text("Введите ваш email для Garmin Connect:")
 
@@ -1083,23 +1046,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if state == "waiting_email":
         email = update.message.text.strip()
         sess["email"] = email
-        _save_pending_email(chat_id, email)
         sess["state"] = "waiting_password"
         await update.message.reply_text("Теперь введите ваш пароль для Garmin Connect:")
         return
 
-    if state == "waiting_password" or (state is None and _load_pending_email(chat_id)):
-        email = sess.get("email") or _load_pending_email(chat_id)
+    if state == "waiting_password":
+        email = sess.get("email")
         password = update.message.text.strip()
         if not email or not password:
             await update.message.reply_text("\u274c \u0423\u043a\u0430\u0436\u0438\u0442\u0435 email \u0438 \u043f\u0430\u0440\u043e\u043b\u044c.")
             return
         if not garmin_login(sess, email, password, chat_id):
-            _clear_pending_email(chat_id)
             sess["state"] = "waiting_email"
             await update.message.reply_text("\u274c \u041e\u0448\u0438\u0431\u043a\u0430 \u0430\u0432\u0442\u043e\u0440\u0438\u0437\u0430\u0446\u0438\u0438. \u0412\u0432\u0435\u0434\u0438\u0442\u0435 email \u0437\u0430\u043d\u043e\u0432\u043e:")
             return
-        _clear_pending_email(chat_id)
         acts = get_last_activities(sess, 10)
         if not acts:
             await update.message.reply_text("\u274c \u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043e\u043a.")
@@ -1323,17 +1283,8 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)
 
-    if WEBHOOK_URL:
-        logger.info("Starting webhook mode on port %s, URL: %s", PORT, WEBHOOK_URL)
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path="webhook",
-            webhook_url=f"{WEBHOOK_URL}/webhook",
-        )
-    else:
-        logger.info("Starting polling mode (no WEBHOOK_URL set)")
-        application.run_polling()
+    logger.info("Starting polling mode")
+    application.run_polling()
 
 
 if __name__ == "__main__":

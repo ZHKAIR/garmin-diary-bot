@@ -24,6 +24,8 @@ from telegram_bot import (
     normalize_label,
     STANDARD_DISTANCES,
     NORMALIZATION_THRESHOLD,
+    parse_pace_to_spk,
+    format_mmss,
 )
 
 
@@ -193,6 +195,69 @@ def test_detailed_intervals_with_sublaps():
     msg = build_detailed_intervals_message(segments)
     assert "4:00" in msg
     assert "4:05" in msg
+
+
+# --------------- Pace calculator tests ---------------
+
+def test_parse_pace_to_spk_valid():
+    assert parse_pace_to_spk("3:50") == 230
+    assert parse_pace_to_spk("5:00") == 300
+    assert parse_pace_to_spk("0:30") == 30
+
+
+def test_parse_pace_to_spk_invalid():
+    assert parse_pace_to_spk("abc") is None
+    assert parse_pace_to_spk("3:60") is None
+    assert parse_pace_to_spk("350") is None
+    assert parse_pace_to_spk("") is None
+
+
+def test_format_mmss():
+    assert format_mmss(90) == "1:30"
+    assert format_mmss(0) == "0:00"
+    assert format_mmss(59) == "0:59"
+    assert format_mmss(61) == "1:01"
+
+
+def test_fmt_smooth_time():
+    assert fmt_smooth_time(90.4) == "1:30"
+    assert fmt_smooth_time(0) == "0:00"
+    assert fmt_smooth_time(125.6) == "2:06"
+
+
+# --------------- Edge case tests ---------------
+
+def test_escape_html():
+    assert escape_html("<b>test</b>") == "&lt;b&gt;test&lt;/b&gt;"
+    assert escape_html("A & B") == "A &amp; B"
+    assert escape_html("") == ""
+
+
+def test_normalize_label_various():
+    assert normalize_label("INTERVAL_ACTIVE") == "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b"
+    assert normalize_label("INTERVAL_WARMUP") == "\u0440\u0430\u0437\u043c\u0438\u043d\u043a\u0430"
+    assert normalize_label("INTERVAL_RECOVERY") == "\u0432\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435"
+    assert normalize_label("INTERVAL_COOLDOWN") == "\u0437\u0430\u043c\u0438\u043d\u043a\u0430"
+    assert normalize_label("LAP") == "\u0431\u0435\u0433"
+    assert normalize_label("SPLIT") == "\u0431\u0435\u0433"
+    assert normalize_label("-") == "\u0431\u0435\u0433"
+    assert normalize_label("RWD_RUN_1") == "\u0431\u0435\u0433"
+    assert normalize_label("SOMETHING_ELSE") == "something_else"
+
+
+def test_fmt_pace_edge_cases():
+    assert fmt_pace(None, None, None) == "-"
+    assert fmt_pace(0, None, None) == "-"
+    assert fmt_pace(None, 1000, 300) == "5:00"
+    assert fmt_pace(3.333, None, None) == "5:00"
+
+
+def test_fmt_distance_edge_cases():
+    assert fmt_distance(None) == "-"
+    assert fmt_distance(0) == "-"
+    assert fmt_distance(-100) == "-"
+    assert fmt_distance(500) == "500 \u043c"
+    assert fmt_distance(1500) == "1.50 \u043a\u043c"
 
 
 if __name__ == "__main__":
