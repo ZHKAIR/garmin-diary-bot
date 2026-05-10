@@ -17,7 +17,9 @@ RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 ENV PYTHONUNBUFFERED=1
+ENV LANG=C.UTF-8
+ENV PYTHONIOENCODING=utf-8
 
-EXPOSE 8443
+EXPOSE 10000
 
 CMD ["python", "telegram_bot.py"]
