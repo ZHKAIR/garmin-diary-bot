@@ -863,7 +863,7 @@ def _build_activity_list_keyboard(acts: List[Dict[str, Any]]) -> InlineKeyboardM
 def build_main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("\ud83c\udfc3\u200d\u2642\ufe0f Garmin Extractor", callback_data="garmin_extractor"),
+            InlineKeyboardButton("Garmin Extractor", callback_data="garmin_extractor"),
             InlineKeyboardButton("\u23f1 Pace Calculator", callback_data="pace_calculator"),
         ]
     ])
@@ -997,7 +997,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     sess["state"] = "waiting_email"
-    await query.edit_message_text("\ud83d\udd10 \u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0432\u0430\u0448 email \u0434\u043b\u044f Garmin Connect:")
+    await query.edit_message_text("Введите ваш email для Garmin Connect:")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1008,7 +1008,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if state == "waiting_email":
         sess["email"] = update.message.text.strip()
         sess["state"] = "waiting_password"
-        await update.message.reply_text("\ud83d\udd11 \u0422\u0435\u043f\u0435\u0440\u044c \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0432\u0430\u0448 \u043f\u0430\u0440\u043e\u043b\u044c \u0434\u043b\u044f Garmin Connect:")
+        await update.message.reply_text("Теперь введите ваш пароль для Garmin Connect:")
         return
 
     if state == "waiting_password":
