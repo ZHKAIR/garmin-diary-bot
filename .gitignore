@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+*.log
+.garth_tokens/
+.env
+bot.log

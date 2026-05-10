@@ -1,0 +1,8 @@
+# Core library for interacting with Garmin Connect
+garminconnect>=0.2,<1.0
+
+# Telegram bot
+python-telegram-bot[webhooks]>=20.0,<23.0
+
+# Optional: pretty tables for nicer CLI output
+rich>=13,<14
