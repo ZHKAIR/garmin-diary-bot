@@ -1043,10 +1043,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # No valid session → ask for credentials
     sess["state"] = "waiting_email"
-    await query.edit_message_text("Введите ваш email для Garmin Connect:")
+    await query.message.reply_text("Введите ваш email для Garmin Connect:")
 
-    sess["state"] = "waiting_email"
-    await query.edit_message_text("Введите ваш email для Garmin Connect:")
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log errors caused by updates."""
+    logger.error("Exception while handling an update:", exc_info=context.error)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1291,6 +1293,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(sublaps_format_handler, pattern=r"^sublaps_\d+$"))
     application.add_handler(CallbackQueryHandler(activity_handler, pattern=r"^(activity_\d+|back_to_list|go_home)$"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_error_handler(error_handler)
 
     if WEBHOOK_URL:
         logger.info("Starting webhook mode on port %s, URL: %s", PORT, WEBHOOK_URL)
