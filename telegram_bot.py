@@ -37,6 +37,23 @@ TOKEN_DIR = Path(os.environ.get("GARTH_TOKEN_DIR", ".garth_tokens"))
 chat_sessions: Dict[int, Dict[str, Any]] = {}
 
 
+def _session_keys(sess: Dict[str, Any]) -> List[str]:
+    return sorted(sess.keys())
+
+
+def _message_text_category(text: Optional[str], state: Optional[str]) -> str:
+    if state == "waiting_password":
+        return "password_redacted"
+    if text is None:
+        return "none"
+    stripped = text.strip()
+    if not stripped:
+        return "empty"
+    if "@" in stripped:
+        return "email_like"
+    return f"text_len_{len(stripped)}"
+
+
 # --------------- Token persistence (garth) ---------------
 
 def _token_path(chat_id: int) -> Path:
@@ -81,7 +98,6 @@ def try_restore_session(chat_id: int) -> Optional[Garmin]:
             shutil.rmtree(token_dir, ignore_errors=True)
         except Exception:
             pass
-        chat_sessions.pop(chat_id, None)
         return None
 
 
@@ -92,6 +108,14 @@ def ensure_session(chat_id: int) -> Dict[str, Any]:
     if not sess:
         sess = {}
         chat_sessions[chat_id] = sess
+        logger.info("ensure_session created chat_id=%s keys=%s", chat_id, _session_keys(sess))
+    else:
+        logger.info(
+            "ensure_session returned chat_id=%s state=%s keys=%s",
+            chat_id,
+            sess.get("state"),
+            _session_keys(sess),
+        )
     return sess
 
 
@@ -1013,6 +1037,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     chat_id = query.message.chat_id
     sess = ensure_session(chat_id)
+    state_before = sess.get("state")
+    logger.info(
+        "button_handler chat_id=%s data=%s state_before=%s keys=%s",
+        chat_id,
+        query.data,
+        state_before,
+        _session_keys(sess),
+    )
 
     api = ensure_api(chat_id)
     if api:
@@ -1029,7 +1061,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
+    sess = ensure_session(chat_id)
     sess["state"] = "waiting_email"
+    logger.info(
+        "button_handler chat_id=%s data=%s state_after=%s keys=%s",
+        chat_id,
+        query.data,
+        sess.get("state"),
+        _session_keys(sess),
+    )
     await query.message.reply_text("Введите ваш email для Garmin Connect:")
 
 
@@ -1042,6 +1082,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = update.effective_chat.id
     sess = ensure_session(chat_id)
     state = sess.get("state")
+    logger.info(
+        "handle_message chat_id=%s text_category=%s state=%s keys=%s",
+        chat_id,
+        _message_text_category(update.message.text, state),
+        state,
+        _session_keys(sess),
+    )
 
     if state == "waiting_email":
         email = update.message.text.strip()

@@ -5,9 +5,12 @@ Or simply:  python test_logic.py
 """
 
 from datetime import timedelta
+from pathlib import Path
+import tempfile
 from typing import List, Dict, Any, Optional
 
 # Import the functions under test directly from the bot module.
+import telegram_bot
 from telegram_bot import (
     normalize_distance,
     find_dominant_distance,
@@ -217,6 +220,42 @@ def test_format_mmss():
     assert format_mmss(0) == "0:00"
     assert format_mmss(59) == "0:59"
     assert format_mmss(61) == "1:01"
+
+
+def test_restore_failure_preserves_interactive_session():
+    chat_id = 987654321
+    original_token_dir = telegram_bot.TOKEN_DIR
+    original_garmin = telegram_bot.Garmin
+
+    class FailingGarmin:
+        def __init__(self):
+            self.garth = self
+
+        def load(self, path: str) -> None:
+            pass
+
+        def login(self) -> None:
+            raise RuntimeError("restore failed")
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            telegram_bot.TOKEN_DIR = Path(tmp)
+            token_path = telegram_bot._token_path(chat_id)
+            token_path.mkdir(parents=True)
+            telegram_bot.Garmin = FailingGarmin
+            telegram_bot.chat_sessions.clear()
+
+            sess = telegram_bot.ensure_session(chat_id)
+            sess["state"] = "waiting_email"
+
+            assert telegram_bot.try_restore_session(chat_id) is None
+            assert telegram_bot.chat_sessions.get(chat_id) is sess
+            assert sess["state"] == "waiting_email"
+            assert not token_path.exists()
+    finally:
+        telegram_bot.TOKEN_DIR = original_token_dir
+        telegram_bot.Garmin = original_garmin
+        telegram_bot.chat_sessions.clear()
 
 
 def test_fmt_smooth_time():
