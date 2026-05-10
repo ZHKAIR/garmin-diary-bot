@@ -871,14 +871,14 @@ def build_main_menu_keyboard() -> InlineKeyboardMarkup:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "\ud83c\udfc3\u200d\u2642\ufe0f \u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u0432 BegovayaKuznitsa_Bot!\n\n\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435:",
+        "Добро пожаловать в BegovayaKuznitsa_Bot!\n\nВыберите действие:",
         reply_markup=build_main_menu_keyboard(),
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
-        "\ud83c\udfc3\u200d\u2642\ufe0f <b>BegovayaKuznitsa_Bot</b>\n\n"
+        "🏃 <b>BegovayaKuznitsa_Bot</b>\n\n"
         "<b>\u041a\u043e\u043c\u0430\u043d\u0434\u044b:</b>\n"
         "/start \u2014 \u0433\u043b\u0430\u0432\u043d\u043e\u0435 \u043c\u0435\u043d\u044e\n"
         "/last \u2014 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0431\u0435\u0433\u043e\u0432\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0430 (\u0431\u044b\u0441\u0442\u0440\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430)\n"
@@ -1075,7 +1075,7 @@ async def activity_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "go_home":
         sess.pop("state", None)
         await query.edit_message_text(
-            "\ud83c\udfc3\u200d\u2642\ufe0f \u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u0432 BegovayaKuznitsa_Bot!\n\n\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435:",
+            "Добро пожаловать в BegovayaKuznitsa_Bot!\n\nВыберите действие:",
             reply_markup=build_main_menu_keyboard(),
         )
         return
