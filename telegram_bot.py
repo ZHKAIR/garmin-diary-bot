@@ -448,14 +448,15 @@ def fmt_smooth_time(seconds: float) -> str:
     return f"{m}:{s:02d}"
 
 
-def compact_interval_pace_seconds(duration_s: float, real_distance: float, dominant: float) -> float:
-    """Return compact interval pace in seconds per kilometer."""
-    if real_distance <= 0 or duration_s <= 0:
+def compact_interval_pace_seconds(duration_s: float, display_distance: float) -> float:
+    """Return compact interval pace in seconds per kilometer.
+
+    Compact output labels intervals by the same normalized distance shown in
+    detailed output, so its pace should use that normalized distance too.
+    """
+    if display_distance <= 0 or duration_s <= 0:
         return duration_s
-    if dominant > 0 and abs(real_distance - dominant) / dominant <= 0.10:
-        effective_time = smooth_interval_pace(duration_s, real_distance, dominant)
-        return effective_time / (dominant / 1000.0)
-    return duration_s / (real_distance / 1000.0)
+    return duration_s / (display_distance / 1000.0)
 
 
 # --------------- Formatting helpers ---------------
@@ -583,14 +584,11 @@ def group_intervals(segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def build_compact_intervals_message(segments: List[Dict[str, Any]], header: Optional[str] = None) -> str:
-    """Diary-ready compact format using dominant-distance smoothing.
+    """Diary-ready compact format using normalized interval distances.
 
     Output example: ``10x400: 3:48, 3:50, 3:42, 3:20``
     """
     title = header or "\u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430:"
-
-    dominant = find_dominant_distance(segments)
-    dom_int = int(dominant)
 
     groups: List[Tuple[int, List[str]]] = []
 
@@ -602,11 +600,10 @@ def build_compact_intervals_message(segments: List[Dict[str, Any]], header: Opti
         if raw_dist <= 0 or dur <= 0:
             continue
 
-        pace_seconds = compact_interval_pace_seconds(dur, raw_dist, dominant)
-        pace_str = fmt_smooth_time(pace_seconds)
-
         norm_dist = normalize_distance(raw_dist)
         dist_key = int(round(norm_dist)) if norm_dist else int(round(raw_dist))
+        pace_seconds = compact_interval_pace_seconds(dur, float(dist_key))
+        pace_str = fmt_smooth_time(pace_seconds)
 
         if groups and groups[-1][0] == dist_key:
             groups[-1][1].append(pace_str)

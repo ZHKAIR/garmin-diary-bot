@@ -1,4 +1,4 @@
-"""Unit tests for telegram_bot formatting and GPS-smoothing logic.
+"""Unit tests for telegram_bot formatting and GPS normalization logic.
 
 Run with:  python -m pytest test_logic.py -v
 Or simply:  python test_logic.py
@@ -114,7 +114,7 @@ def test_smooth_pace_zero_distance():
     assert smooth_interval_pace(60, 0, 400) == 60
 
 
-def test_compact_intervals_uses_smoothing():
+def test_compact_intervals_matches_detailed_normalized_pace():
     segments = [
         {"label": "\u0440\u0430\u0437\u043c\u0438\u043d\u043a\u0430", "distance_m": 2000, "duration_s": 600},
         {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 407, "duration_s": 90},
@@ -126,7 +126,7 @@ def test_compact_intervals_uses_smoothing():
     ]
     msg = build_compact_intervals_message(segments, "test")
     assert "3x400" in msg
-    assert "3x400: 3:41, 3:43, 3:46" in msg
+    assert "3x400: 3:45, 3:40, 3:48" in msg
     assert "0:90" not in msg
     assert "1:30" not in msg
     assert "test" in msg
@@ -142,7 +142,7 @@ def test_compact_intervals_diary_format():
     lines = [l for l in msg.split("\n") if "x" in l.lower()]
     assert len(lines) == 1
     assert lines[0].startswith("3x200:")
-    assert lines[0] == "3x200: 3:18, 3:12, 3:20"
+    assert lines[0] == "3x200: 3:20, 3:10, 3:25"
 
 
 def test_compact_intervals_formats_200m_as_pace_not_elapsed_time():
@@ -195,7 +195,25 @@ def test_gps_drift_200m_intervals():
     ]
     msg = build_compact_intervals_message(segments)
     assert "4x200" in msg
-    assert "4x200: 3:03, 2:59, 3:10, 3:22" in msg
+    assert "4x200: 3:10, 2:55, 3:20, 3:25" in msg
+
+
+def test_compact_and_detailed_interval_paces_match():
+    segments = [
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 207, "duration_s": 35.4},
+        {"label": "\u0432\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435", "distance_m": 207, "duration_s": 93, "avg_speed": 207 / 93},
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 203, "duration_s": 39.2},
+        {"label": "\u0432\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435", "distance_m": 203, "duration_s": 88, "avg_speed": 203 / 88},
+        {"label": "\u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b", "distance_m": 200, "duration_s": 38.6},
+    ]
+
+    compact = build_compact_intervals_message(segments, "07.05.2026 08:35")
+    detailed = build_laps_message(segments, "07.05.2026 08:35")
+
+    assert "3x200: 2:57, 3:16, 3:13" in compact
+    assert "1) 200 \u043c - 2:57" in detailed
+    assert "2) 200 \u043c - 3:16" in detailed
+    assert "3) 200 \u043c - 3:13" in detailed
 
 
 def test_detailed_intervals_with_sublaps():
