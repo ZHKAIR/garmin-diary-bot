@@ -1022,28 +1022,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     api = try_restore_session(chat_id)
     if api:
         sess["api"] = api
-        await query.edit_message_text("\u23f3 \u0412\u044b\u043f\u043e\u043b\u043d\u044f\u044e \u0432\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435...")
         acts = get_last_activities(sess, 10)
-        if not acts:
-            await query.edit_message_text("\u274c \u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043e\u043a. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.")
+        if acts:
+            sess["last_activities"] = acts
+            keyboard = _build_activity_list_keyboard(acts)
+            await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
             return
-        sess["last_activities"] = acts
-        keyboard = _build_activity_list_keyboard(acts)
-        await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
-        return
+        # Restore succeeded but no activities → treat as expired, fall through to credentials
 
     # Fallback to ensure_api (for any edge case) then ask credentials
     api = ensure_api(chat_id)
     if api:
         sess["api"] = api
         acts = get_last_activities(sess, 10)
-        if not acts:
-            await query.edit_message_text("\u274c \u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043e\u043a. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.")
+        if acts:
+            sess["last_activities"] = acts
+            keyboard = _build_activity_list_keyboard(acts)
+            await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
             return
-        sess["last_activities"] = acts
-        keyboard = _build_activity_list_keyboard(acts)
-        await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
-        return
+
+    # No valid session → ask for credentials
+    sess["state"] = "waiting_email"
+    await query.edit_message_text("Введите ваш email для Garmin Connect:")
 
     sess["state"] = "waiting_email"
     await query.edit_message_text("Введите ваш email для Garmin Connect:")
