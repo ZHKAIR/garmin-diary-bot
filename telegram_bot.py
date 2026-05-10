@@ -893,6 +893,16 @@ def _build_activity_list_keyboard(acts: List[Dict[str, Any]]) -> InlineKeyboardM
     return InlineKeyboardMarkup(keyboard)
 
 
+def _append_keyboard_rows(
+    markup: InlineKeyboardMarkup, rows: List[List[InlineKeyboardButton]]
+) -> InlineKeyboardMarkup:
+    """Return a new keyboard with additional rows.
+
+    python-telegram-bot v20 exposes inline_keyboard as an immutable tuple.
+    """
+    return InlineKeyboardMarkup([*markup.inline_keyboard, *rows])
+
+
 # --------------- Telegram handlers ---------------
 
 def build_main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -1176,9 +1186,9 @@ async def activity_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await query.edit_message_text("\u274c \u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043e\u043a. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.")
             return
         sess["last_activities"] = acts
-        keyboard = _build_activity_list_keyboard(acts)
-        keyboard.inline_keyboard.append(
-            [InlineKeyboardButton("На главную", callback_data="go_home")]
+        keyboard = _append_keyboard_rows(
+            _build_activity_list_keyboard(acts),
+            [[InlineKeyboardButton("На главную", callback_data="go_home")]],
         )
         await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
         return

@@ -258,6 +258,28 @@ def test_restore_failure_preserves_interactive_session():
         telegram_bot.chat_sessions.clear()
 
 
+def test_append_keyboard_rows_rebuilds_immutable_markup():
+    keyboard = telegram_bot._build_activity_list_keyboard(
+        [
+            {
+                "activityId": 123,
+                "activityName": "Morning Run",
+                "startTimeLocal": "2026-05-10 07:30:00",
+            }
+        ]
+    )
+
+    rebuilt = telegram_bot._append_keyboard_rows(
+        keyboard,
+        [[telegram_bot.InlineKeyboardButton("Home", callback_data="go_home")]],
+    )
+
+    assert isinstance(keyboard.inline_keyboard, tuple)
+    assert len(keyboard.inline_keyboard) == 1
+    assert len(rebuilt.inline_keyboard) == 2
+    assert rebuilt.inline_keyboard[-1][0].callback_data == "go_home"
+
+
 def test_fmt_smooth_time():
     assert fmt_smooth_time(90.4) == "1:30"
     assert fmt_smooth_time(0) == "0:00"
