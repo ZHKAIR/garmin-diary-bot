@@ -823,9 +823,9 @@ def _format_activity_for_display(
         sess["cached_activity_id"] = activity_id
         message = build_compact_intervals_message(segments, header)
         nav = InlineKeyboardMarkup([
-            [InlineKeyboardButton("\ud83d\udccb \u041f\u043e\u0434\u0440\u043e\u0431\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442", callback_data=f"full_{activity_id}")],
+            [InlineKeyboardButton("Подробный формат", callback_data=f"full_{activity_id}")],
             [InlineKeyboardButton("\u2b05\ufe0f \u041d\u0430\u0437\u0430\u0434 \u043a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="back_to_list")],
-            [InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")],
+            [InlineKeyboardButton("На главную", callback_data="go_home")],
         ])
         return message, nav, True
     else:
@@ -833,7 +833,7 @@ def _format_activity_for_display(
         message = build_laps_message([], header, summary=summary)
         nav = InlineKeyboardMarkup([
             [InlineKeyboardButton("\u2b05\ufe0f \u041d\u0430\u0437\u0430\u0434 \u043a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="back_to_list")],
-            [InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")],
+            [InlineKeyboardButton("На главную", callback_data="go_home")],
         ])
         return message, nav, False
 
@@ -878,7 +878,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
-        "🏃 <b>BegovayaKuznitsa_Bot</b>\n\n"
+        "<b>BegovayaKuznitsa_Bot</b>\n\n"
         "<b>\u041a\u043e\u043c\u0430\u043d\u0434\u044b:</b>\n"
         "/start \u2014 \u0433\u043b\u0430\u0432\u043d\u043e\u0435 \u043c\u0435\u043d\u044e\n"
         "/last \u2014 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0431\u0435\u0433\u043e\u0432\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0430 (\u0431\u044b\u0441\u0442\u0440\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430)\n"
@@ -1040,7 +1040,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(
                 "\u274c \u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442. \u0412\u0432\u0435\u0434\u0438 \u0442\u0435\u043c\u043f \u043a\u0430\u043a \u043c\u0438\u043d:\u0441\u0435\u043a, \u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440 3:50",
                 reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")]]
+                    [[InlineKeyboardButton("На главную", callback_data="go_home")]]
                 ),
             )
             return
@@ -1057,7 +1057,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(
             msg,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")]]
+                [[InlineKeyboardButton("На главную", callback_data="go_home")]]
             ),
         )
         return
@@ -1092,7 +1092,7 @@ async def activity_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         sess["last_activities"] = acts
         keyboard = _build_activity_list_keyboard(acts)
         keyboard.inline_keyboard.append(
-            [InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")]
+            [InlineKeyboardButton("На главную", callback_data="go_home")]
         )
         await query.edit_message_text("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0440\u0435\u043d\u0438\u0440\u043e\u0432\u043a\u0443:", reply_markup=keyboard)
         return
@@ -1129,9 +1129,9 @@ async def compact_format_handler(update: Update, context: ContextTypes.DEFAULT_T
 
     message = build_compact_intervals_message(segments, header)
     nav_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("\ud83d\udccb \u041f\u043e\u0434\u0440\u043e\u0431\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442", callback_data=f"full_{activity_id}")],
+        [InlineKeyboardButton("Подробный формат", callback_data=f"full_{activity_id}")],
         [InlineKeyboardButton("\u2b05\ufe0f \u041d\u0430\u0437\u0430\u0434 \u043a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="back_to_list")],
-        [InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")],
+        [InlineKeyboardButton("На главную", callback_data="go_home")],
     ])
     await query.edit_message_text(
         message, reply_markup=nav_markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True
@@ -1154,9 +1154,9 @@ async def full_format_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     message = build_laps_message(segments, header)
     nav_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("\ud83d\udcd3 \u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430", callback_data=f"compact_{activity_id}")],
+        [InlineKeyboardButton("Для дневника", callback_data=f"compact_{activity_id}")],
         [InlineKeyboardButton("\u2b05\ufe0f \u041d\u0430\u0437\u0430\u0434 \u043a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="back_to_list")],
-        [InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")],
+        [InlineKeyboardButton("На главную", callback_data="go_home")],
     ])
     await query.edit_message_text(
         message, reply_markup=nav_markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True
@@ -1179,10 +1179,10 @@ async def sublaps_format_handler(update: Update, context: ContextTypes.DEFAULT_T
 
     message = build_detailed_intervals_message(segments_sublaps, header)
     nav_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("\ud83d\udccb \u041f\u043e\u0434\u0440\u043e\u0431\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442", callback_data=f"full_{activity_id}")],
-        [InlineKeyboardButton("\ud83d\udcd3 \u0434\u043b\u044f \u0434\u043d\u0435\u0432\u043d\u0438\u043a\u0430", callback_data=f"compact_{activity_id}")],
+        [InlineKeyboardButton("Подробный формат", callback_data=f"full_{activity_id}")],
+        [InlineKeyboardButton("Для дневника", callback_data=f"compact_{activity_id}")],
         [InlineKeyboardButton("\u2b05\ufe0f \u041d\u0430\u0437\u0430\u0434 \u043a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="back_to_list")],
-        [InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")],
+        [InlineKeyboardButton("На главную", callback_data="go_home")],
     ])
     await query.edit_message_text(
         message, reply_markup=nav_markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True
@@ -1198,7 +1198,7 @@ async def pace_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.edit_message_text(
         "\u0412\u0432\u0435\u0434\u0438 \u0442\u0435\u043c\u043f \u0432 \u0444\u043e\u0440\u043c\u0430\u0442\u0435 \u043c\u0438\u043d:\u0441\u0435\u043a (\u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: 3:50)",
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("\ud83c\udfe0 \u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e", callback_data="go_home")]]
+            [[InlineKeyboardButton("На главную", callback_data="go_home")]]
         ),
     )
 
