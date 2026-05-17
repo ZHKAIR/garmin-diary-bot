@@ -29,6 +29,7 @@ from telegram_bot import (
     NORMALIZATION_THRESHOLD,
     parse_pace_to_spk,
     format_mmss,
+    start_health_server_if_needed,
 )
 
 
@@ -366,6 +367,61 @@ def test_fmt_distance_edge_cases():
     assert fmt_distance(-100) == "-"
     assert fmt_distance(500) == "500 \u043c"
     assert fmt_distance(1500) == "1.50 \u043a\u043c"
+
+
+# --------------- Health server tests ---------------
+
+import os
+import urllib.request
+
+
+def test_health_server_skipped_without_port():
+    """Health server should not start when PORT is not set."""
+    old = os.environ.pop("PORT", None)
+    try:
+        assert start_health_server_if_needed() is False
+    finally:
+        if old is not None:
+            os.environ["PORT"] = old
+
+
+def test_health_server_starts_with_port():
+    """Health server should bind and respond 200 on / and /health."""
+    old = os.environ.get("PORT")
+    os.environ["PORT"] = "18932"
+    try:
+        assert start_health_server_if_needed() is True
+        import time
+        time.sleep(0.1)
+
+        for path in ("/", "/health"):
+            resp = urllib.request.urlopen(f"http://127.0.0.1:18932{path}")
+            assert resp.status == 200
+            assert resp.read() == b"ok"
+
+        try:
+            urllib.request.urlopen("http://127.0.0.1:18932/notfound")
+            assert False, "expected 404"
+        except urllib.error.HTTPError as e:
+            assert e.code == 404
+    finally:
+        if old is not None:
+            os.environ["PORT"] = old
+        else:
+            os.environ.pop("PORT", None)
+
+
+def test_health_server_invalid_port():
+    """Health server should return False for non-integer PORT."""
+    old = os.environ.get("PORT")
+    os.environ["PORT"] = "not_a_number"
+    try:
+        assert start_health_server_if_needed() is False
+    finally:
+        if old is not None:
+            os.environ["PORT"] = old
+        else:
+            os.environ.pop("PORT", None)
 
 
 if __name__ == "__main__":

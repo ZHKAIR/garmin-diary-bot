@@ -1330,32 +1330,56 @@ def format_mmss(seconds: float) -> str:
 
 # --------------- Health check for Render ---------------
 
-def _start_health_server() -> None:
-    """Start a minimal HTTP server on $PORT so Render's health check passes."""
+def start_health_server_if_needed() -> bool:
+    """Start a minimal HTTP health server when PORT env var is set (e.g. on Render).
+
+    Returns True if the server was started, False otherwise.
+    Render Web Services require the process to bind to $PORT; without it the
+    deploy times out.  The server responds 200 OK on ``/`` and ``/health``.
+    """
+    port_str = os.environ.get("PORT")
+    if not port_str:
+        logger.info("PORT not set — skipping health server (local mode)")
+        return False
+
     import threading
     from http.server import HTTPServer, BaseHTTPRequestHandler
 
-    port = int(os.environ.get("PORT", "10000"))
+    try:
+        port = int(port_str)
+    except ValueError:
+        logger.error("PORT env var is not a valid integer: %s", port_str)
+        return False
 
     class _Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"ok")
+            if self.path in ("/", "/health"):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok")
+            else:
+                self.send_response(404)
+                self.end_headers()
 
         def log_message(self, fmt, *args):
             pass
 
-    server = HTTPServer(("0.0.0.0", port), _Handler)
+    try:
+        server = HTTPServer(("0.0.0.0", port), _Handler)
+    except OSError as exc:
+        logger.error("Failed to bind health server on port %s: %s", port, exc)
+        return False
+
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    logger.info("Health check server listening on port %s", port)
+    logger.info("Health-check server listening on 0.0.0.0:%s", port)
+    return True
 
 
 # --------------- Application entry point ---------------
 
 def main() -> None:
-    _start_health_server()
+    start_health_server_if_needed()
 
     application = Application.builder().token(BOT_TOKEN).build()
 
