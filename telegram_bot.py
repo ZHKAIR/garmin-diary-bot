@@ -1328,9 +1328,35 @@ def format_mmss(seconds: float) -> str:
     return f"{m}:{s:02d}"
 
 
+# --------------- Health check for Render ---------------
+
+def _start_health_server() -> None:
+    """Start a minimal HTTP server on $PORT so Render's health check passes."""
+    import threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+
+    port = int(os.environ.get("PORT", "10000"))
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, fmt, *args):
+            pass
+
+    server = HTTPServer(("0.0.0.0", port), _Handler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    logger.info("Health check server listening on port %s", port)
+
+
 # --------------- Application entry point ---------------
 
 def main() -> None:
+    _start_health_server()
+
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
