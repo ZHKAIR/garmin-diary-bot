@@ -26,10 +26,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-if not BOT_TOKEN:
-    logger.critical("TELEGRAM_BOT_TOKEN environment variable not set")
-    sys.exit(1)
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
 TOKEN_DIR = Path(os.environ.get("GARTH_TOKEN_DIR", ".garth_tokens"))
 
@@ -1381,6 +1378,10 @@ def start_health_server_if_needed() -> bool:
 def main() -> None:
     start_health_server_if_needed()
 
+    if not BOT_TOKEN:
+        logger.critical("TELEGRAM_BOT_TOKEN environment variable not set — exiting")
+        sys.exit(1)
+
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
@@ -1397,9 +1398,15 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)
 
-    logger.info("Starting polling mode")
-    application.run_polling()
+    logger.info("Starting polling mode (drop_pending_updates=True)")
+    application.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        logger.critical("Unhandled exception in main — exiting", exc_info=True)
+        sys.exit(1)
